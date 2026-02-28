@@ -1,0 +1,19 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# copy csproj and restore
+COPY src/MiniERP.Infrastructure/ ./src/MiniERP.Infrastructure/
+COPY src/MiniERP.Domain/ ./src/MiniERP.Domain/
+COPY src/MiniERP.Application/ ./src/MiniERP.Application/
+COPY src/MiniERP.API/ ./src/MiniERP.API/
+RUN dotnet restore src/MiniERP.API/MiniERP.API.csproj
+
+# build
+RUN dotnet publish src/MiniERP.API/MiniERP.API.csproj -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+COPY --from=build /app/publish ./
+ENV ASPNETCORE_URLS=http://+:5000
+EXPOSE 5000
+ENTRYPOINT ["dotnet", "MiniERP.API.dll"]

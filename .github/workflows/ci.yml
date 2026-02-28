@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18]
+        dotnet-version: [8.0]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ matrix.dotnet-version }}
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: npm ci
+
+    - name: Build frontend
+      working-directory: frontend
+      run: npm run build --if-present
+
+    - name: Build backend
+      run: dotnet build src/MiniERP.API/MiniERP.API.csproj --configuration Release
+
+    - name: Run EF migrations (dry-run)
+      run: dotnet ef migrations script -p src/MiniERP.Infrastructure/MiniERP.Infrastructure.csproj -s src/MiniERP.API/MiniERP.API.csproj --idempotent || true
+
+    - name: Build backend Docker image
+      run: |
+        docker build -f Dockerfile.backend -t minierp-api:ci .
