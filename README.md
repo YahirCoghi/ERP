@@ -1,70 +1,44 @@
-# MiniERP - Sistema de Gestión Empresarial
+# MiniERP - Sistema de Gestion Empresarial
 
-Sistema ERP modular para pequeñas empresas desarrollado en .NET 8 y React.
+Sistema ERP modular para pequenas empresas desarrollado en .NET 8 y React.
 
-## Módulos Incluidos
-- 📊 **Contabilidad**: Plan de cuentas, asientos contables, balance general, estados financieros
-- 📦 **Inventario**: Control de stock, almacenes, movimientos, valoración
-- 💰 **Ventas**: Cotizaciones, pedidos, facturas, clientes
-- 🛒 **Compras**: Órdenes de compra, recepción, proveedores
-- 👥 **CRM**: Gestión de clientes, oportunidades, seguimiento
-- 👔 **Recursos Humanos**: Empleados, nómina, asistencia
-- 🏭 **Producción**: Órdenes de producción, BOM, control de procesos
+## Modulos incluidos
+- Contabilidad: plan de cuentas y asientos contables.
+- Inventario: control de stock y movimientos.
+- Ventas: pedidos y facturacion.
+- Compras: ordenes de compra y proveedores.
+- Multi-tenant: tenants, licencias y onboarding.
 
-## Tecnologías
-- **Backend**: ASP.NET Core 8 Web API
-- **Frontend**: React 18 + TypeScript + Material-UI
-- **Base de Datos**: SQL Server
-- **ORM**: Entity Framework Core 8
-- **Autenticación**: JWT + ASP.NET Identity
+## Tecnologias
+- Backend: ASP.NET Core 8 Web API
+- Frontend: React 18 + TypeScript + Vite
+- Base de datos: SQL Server
+- ORM: Entity Framework Core 8
+- Autenticacion: JWT + BCrypt
 
-## Características
-- ✅ Multi-moneda y multi-idioma
-- ✅ Sistema de roles y permisos
-- ✅ Auditoría completa de cambios
-- ✅ API REST documentada
-- ✅ Backup automático
-- ✅ Dashboard personalizable
-- ✅ Reportes avanzados
-
-## Requisitos
-- .NET 8 SDK
-- SQL Server 2019+ o SQL Server Express
-- Node.js 18+
-- Visual Studio 2022 o VS Code
-
-## Instalación
+## Instalacion rapida
 
 ### Backend
 ```bash
 cd src/MiniERP.API
 dotnet restore
-dotnet ef database update
 dotnet run
 ```
 
 ### Frontend
 ```bash
-cd src/MiniERP.Web
+cd frontend
 npm install
-npm start
+npm run dev
 ```
 
-## Configuración Inicial
-1. Configurar cadena de conexión en `appsettings.json`
-2. Ejecutar migraciones de base de datos
-3. Usuario admin por defecto: `admin@minierp.com` / `Admin123!`
-
-## Estructura del Proyecto
-```
+## Estructura
+```text
 MiniERP/
-├── src/
-│   ├── MiniERP.API/          # Web API
-│   ├── MiniERP.Domain/       # Entidades y lógica de negocio
-│   ├── MiniERP.Application/  # Casos de uso y DTOs
-│   ├── MiniERP.Infrastructure/ # Acceso a datos y servicios externos
-│   └── MiniERP.Web/          # Frontend React
+  src/
+    MiniERP.API/
+    MiniERP.Domain/
+    MiniERP.Application/
+    MiniERP.Infrastructure/
+  frontend/
 ```
-
-## Licencia
-Propietario - Todos los derechos reservados
