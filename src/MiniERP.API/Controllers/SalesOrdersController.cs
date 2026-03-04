@@ -91,7 +91,30 @@ public class SalesOrdersController : ControllerBase
             ApplySalesOrderTotals(salesOrder, settings.DefaultTaxRate);
             _context.SalesOrders.Add(salesOrder);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetSalesOrder), new { id = salesOrder.Id }, salesOrder);
+
+            var response = new
+            {
+                salesOrder.Id,
+                salesOrder.OrderNumber,
+                salesOrder.OrderDate,
+                salesOrder.CustomerId,
+                salesOrder.Subtotal,
+                salesOrder.Tax,
+                salesOrder.Total,
+                salesOrder.Currency,
+                salesOrder.Status,
+                Lines = salesOrder.Lines.Select(l => new
+                {
+                    l.Id,
+                    l.ProductId,
+                    l.Quantity,
+                    l.UnitPrice,
+                    l.Discount,
+                    l.Total
+                })
+            };
+
+            return CreatedAtAction(nameof(GetSalesOrder), new { id = salesOrder.Id }, response);
         }
         catch (DbUpdateException ex)
         {

@@ -9,6 +9,7 @@ import Customers from './pages/Customers'
 import Suppliers from './pages/Suppliers'
 import SalesOrders from './pages/SalesOrders'
 import PurchaseOrders from './pages/PurchaseOrders'
+import PurchaseInvoices from './pages/PurchaseInvoices'
 import Invoices from './pages/Invoices'
 import InventoryMovements from './pages/InventoryMovements'
 import TaxCodes from './pages/TaxCodes'
@@ -90,6 +91,7 @@ function App() {
         <Route path="/suppliers" element={hasAnyRole(role, ['Owner', 'Admin', 'Purchasing']) ? <Suppliers /> : <Navigate to="/" replace />} />
         <Route path="/sales-orders" element={hasAnyRole(role, ['Owner', 'Admin', 'Sales']) ? <SalesOrders /> : <Navigate to="/" replace />} />
         <Route path="/purchase-orders" element={hasAnyRole(role, ['Owner', 'Admin', 'Purchasing']) ? <PurchaseOrders /> : <Navigate to="/" replace />} />
+        <Route path="/purchase-invoices" element={hasAnyRole(role, ['Owner', 'Admin', 'Purchasing']) ? <PurchaseInvoices /> : <Navigate to="/" replace />} />
         <Route path="/invoices" element={hasAnyRole(role, ['Owner', 'Admin', 'Accounting']) ? <Invoices /> : <Navigate to="/" replace />} />
         <Route path="/inventory" element={hasAnyRole(role, ['Owner', 'Admin', 'Inventory']) ? <InventoryMovements /> : <Navigate to="/" replace />} />
         <Route path="/catalogs/taxes" element={hasAnyRole(role, ['Owner', 'Admin', 'Accounting', 'Sales', 'Purchasing']) ? <TaxCodes /> : <Navigate to="/" replace />} />

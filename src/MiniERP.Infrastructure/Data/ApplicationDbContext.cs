@@ -24,6 +24,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<PurchasingSettings> PurchasingSettings => Set<PurchasingSettings>();
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
     public DbSet<PurchaseOrderLine> PurchaseOrderLines => Set<PurchaseOrderLine>();
+    public DbSet<PurchaseInvoice> PurchaseInvoices => Set<PurchaseInvoice>();
+    public DbSet<PurchaseInvoiceLine> PurchaseInvoiceLines => Set<PurchaseInvoiceLine>();
     public DbSet<User> Users => Set<User>();
     public DbSet<InventoryMovement> InventoryMovements => Set<InventoryMovement>();
     public DbSet<ProductTransaction> ProductTransactions => Set<ProductTransaction>();
@@ -189,6 +191,32 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.PurchaseOrder).WithMany(e => e.Lines).HasForeignKey(e => e.PurchaseOrderId);
             entity.Property(e => e.Quantity).HasColumnType("decimal(18,4)");
             entity.Property(e => e.UnitPrice).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Discount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Total).HasColumnType("decimal(18,2)");
+        });
+
+        modelBuilder.Entity<PurchaseInvoice>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.InvoiceNumber).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Subtotal).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Tax).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Total).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.PaidAmount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Balance).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Status).HasMaxLength(30);
+            entity.HasOne(e => e.Supplier).WithMany().HasForeignKey(e => e.SupplierId);
+            entity.HasOne(e => e.PurchaseOrder).WithMany().HasForeignKey(e => e.PurchaseOrderId);
+            entity.HasIndex(e => e.InvoiceNumber).IsUnique();
+        });
+
+        modelBuilder.Entity<PurchaseInvoiceLine>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.Product).WithMany().HasForeignKey(e => e.ProductId);
+            entity.HasOne(e => e.PurchaseInvoice).WithMany(e => e.Lines).HasForeignKey(e => e.PurchaseInvoiceId);
+            entity.Property(e => e.Quantity).HasColumnType("decimal(18,4)");
+            entity.Property(e => e.UnitCost).HasColumnType("decimal(18,2)");
             entity.Property(e => e.Discount).HasColumnType("decimal(18,2)");
             entity.Property(e => e.Total).HasColumnType("decimal(18,2)");
         });

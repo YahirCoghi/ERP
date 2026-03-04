@@ -51,6 +51,12 @@ function Layout({ children, onLogout, username, role }: LayoutProps) {
               Purchasing
             </NavLink>
           )}
+          {hasAnyRole('Owner', 'Admin', 'Purchasing') && (
+            <NavLink to="/purchase-invoices">
+              <span className="nav-icon"><FileText size={18} /></span>
+              Purchase Bills
+            </NavLink>
+          )}
           {hasAnyRole('Owner', 'Admin', 'Inventory') && (
             <NavLink to="/inventory">
               <span className="nav-icon"><Package size={18} /></span>

@@ -55,6 +55,9 @@ function SalesOrders() {
   const [taxCodes, setTaxCodes] = useState<TaxCode[]>([])
   const [settings, setSettings] = useState<SalesSettings>({ defaultTaxRate: 13 })
   const [showModal, setShowModal] = useState(false)
+  const [showDetailModal, setShowDetailModal] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null)
+  const [workingOrderId, setWorkingOrderId] = useState<number | null>(null)
   const [formData, setFormData] = useState({
     customerId: '',
     taxCode: '',
@@ -207,6 +210,64 @@ function SalesOrders() {
     return 'pill'
   }
 
+  const getOrder = async (id: number) => {
+    const response = await axios.get(`/api/salesorders/${id}`)
+    return response.data as SalesOrder
+  }
+
+  const handleView = async (id: number) => {
+    try {
+      const order = await getOrder(id)
+      setSelectedOrder(order)
+      setShowDetailModal(true)
+    } catch (error) {
+      console.error('Error loading order:', error)
+      alert('Error loading order details')
+    }
+  }
+
+  const handleEditStatus = async (order: SalesOrder) => {
+    const nextStatus = window.prompt('Set status (Pending, Approved, Invoiced):', order.status || 'Pending')
+    if (!nextStatus) return
+
+    try {
+      await axios.put(`/api/salesorders/${order.id}/status`, JSON.stringify(nextStatus), {
+        headers: { 'Content-Type': 'application/json' }
+      })
+      fetchOrders()
+    } catch (error) {
+      console.error('Error updating status:', error)
+      alert('Error updating order status')
+    }
+  }
+
+  const handleCreateInvoice = async (order: SalesOrder) => {
+    if (order.status?.toLowerCase() === 'invoiced') {
+      alert('This order is already invoiced.')
+      return
+    }
+
+    try {
+      setWorkingOrderId(order.id)
+      await axios.post(`/api/invoices/from-salesorder/${order.id}`)
+      await fetchOrders()
+      alert('Invoice created successfully. You can review it in Invoices.')
+    } catch (error) {
+      console.error('Error creating invoice:', error)
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status
+        const payload = error.response?.data as { message?: string; detail?: string; title?: string } | undefined
+        const message = payload?.message || payload?.title || 'Error creating invoice'
+        const detail = payload?.detail
+        alert(`${message}${status ? ` (${status})` : ''}${detail ? `\n${detail}` : ''}`)
+      } else {
+        alert('Error creating invoice')
+      }
+    } finally {
+      setWorkingOrderId(null)
+    }
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -255,8 +316,15 @@ function SalesOrders() {
                 </td>
                 <td>${order.total.toFixed(2)}</td>
                 <td>
-                  <button className="btn btn-outline" style={{ marginRight: '8px' }}>View</button>
-                  <button className="btn btn-outline">Edit</button>
+                  <button className="btn btn-outline" style={{ marginRight: '8px' }} onClick={() => handleView(order.id)}>View</button>
+                  <button className="btn btn-outline" style={{ marginRight: '8px' }} onClick={() => handleEditStatus(order)}>Edit</button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => handleCreateInvoice(order)}
+                    disabled={workingOrderId === order.id || order.status?.toLowerCase() === 'invoiced'}
+                  >
+                    {workingOrderId === order.id ? 'Creating...' : 'Invoice'}
+                  </button>
                 </td>
               </tr>
             ))}
@@ -343,6 +411,53 @@ function SalesOrders() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showDetailModal && selectedOrder && (
+        <div className="modal-overlay" onClick={() => setShowDetailModal(false)}>
+          <div className="modal" style={{ maxWidth: '900px' }} onClick={e => e.stopPropagation()}>
+            <h3>Sales Order {selectedOrder.orderNumber}</h3>
+            <div style={{ marginBottom: '16px' }}>
+              <strong>Customer:</strong> {selectedOrder.customer?.name || selectedOrder.customerId}
+              <br />
+              <strong>Date:</strong> {new Date(selectedOrder.orderDate).toLocaleString()}
+              <br />
+              <strong>Status:</strong> {selectedOrder.status}
+            </div>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Quantity</th>
+                  <th>Unit Price</th>
+                  <th>Discount</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedOrder.lines.map((line, idx) => (
+                  <tr key={line.id ?? idx}>
+                    <td>{line.product?.name || line.productId}</td>
+                    <td>{line.quantity}</td>
+                    <td>${line.unitPrice.toFixed(2)}</td>
+                    <td>${line.discount.toFixed(2)}</td>
+                    <td>${line.total.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ textAlign: 'right', marginTop: '10px' }}>
+              <div>Subtotal: ${selectedOrder.subtotal.toFixed(2)}</div>
+              <div>Tax: ${selectedOrder.tax.toFixed(2)}</div>
+              <div style={{ fontWeight: 'bold', fontSize: '18px' }}>Total: ${selectedOrder.total.toFixed(2)}</div>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn" style={{ background: '#95a5a6', color: 'white' }} onClick={() => setShowDetailModal(false)}>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

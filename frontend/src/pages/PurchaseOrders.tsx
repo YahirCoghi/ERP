@@ -29,7 +29,8 @@ interface PurchaseOrderLine {
   id?: number
   productId: number
   quantity: number
-  unitCost: number
+  unitPrice: number
+  discount: number
   total: number
   product?: Product
 }
@@ -54,6 +55,20 @@ function PurchaseOrders() {
   const [taxCodes, setTaxCodes] = useState<TaxCode[]>([])
   const [settings, setSettings] = useState<PurchasingSettings>({ defaultTaxRate: 13 })
   const [showModal, setShowModal] = useState(false)
+  const [showDetailModal, setShowDetailModal] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null)
+  const [showReceiveModal, setShowReceiveModal] = useState(false)
+  const [receiveOrder, setReceiveOrder] = useState<PurchaseOrder | null>(null)
+  const [receiveLines, setReceiveLines] = useState<Array<{
+    productId: number
+    productName: string
+    orderedQty: number
+    quantity: string
+    unitCost: string
+  }>>([])
+  const [receiveIsFinal, setReceiveIsFinal] = useState(true)
+  const [receiving, setReceiving] = useState(false)
+  const [workingOrderId, setWorkingOrderId] = useState<number | null>(null)
   const [formData, setFormData] = useState({
     supplierId: '',
     taxCode: '',
@@ -174,7 +189,8 @@ function PurchaseOrders() {
         lines: formData.lines.map(line => ({
           productId: parseInt(line.productId),
           quantity: parseFloat(line.quantity),
-          unitCost: parseFloat(line.unitCost),
+          unitPrice: parseFloat(line.unitCost),
+          discount: 0,
           total: parseFloat(line.quantity) * parseFloat(line.unitCost)
         }))
       }
@@ -186,14 +202,163 @@ function PurchaseOrders() {
       fetchOrders()
     } catch (error) {
       console.error('Error saving order:', error)
-      alert('Error saving the order')
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status
+        const payload = error.response?.data as { message?: string; detail?: string; title?: string } | undefined
+        const message = payload?.message || payload?.title || 'Error saving the order'
+        const detail = payload?.detail
+        alert(`${message}${status ? ` (${status})` : ''}${detail ? `\n${detail}` : ''}`)
+      } else {
+        alert('Error saving the order')
+      }
     }
   }
 
   const statusClass = (status: string) => {
     if (status?.toLowerCase() === 'received') return 'pill pill-success'
+    if (status?.toLowerCase() === 'billed') return 'pill pill-success'
+    if (status?.toLowerCase() === 'partiallyreceived') return 'pill pill-warning'
     if (status?.toLowerCase() === 'approved') return 'pill pill-warning'
     return 'pill'
+  }
+
+  const getOrder = async (id: number) => {
+    const response = await axios.get(`/api/purchaseorders/${id}`)
+    return response.data as PurchaseOrder
+  }
+
+  const handleView = async (id: number) => {
+    try {
+      const order = await getOrder(id)
+      setSelectedOrder(order)
+      setShowDetailModal(true)
+    } catch (error) {
+      console.error('Error loading order:', error)
+      alert('Error loading order details')
+    }
+  }
+
+  const handleEditStatus = async (order: PurchaseOrder) => {
+    const nextStatus = window.prompt('Set status (Pending, Approved, Received, Billed):', order.status || 'Pending')
+    if (!nextStatus) return
+
+    try {
+      await axios.put(`/api/purchaseorders/${order.id}/status`, JSON.stringify(nextStatus), {
+        headers: { 'Content-Type': 'application/json' }
+      })
+      await fetchOrders()
+    } catch (error) {
+      console.error('Error updating order status:', error)
+      alert('Error updating order status')
+    }
+  }
+
+  const handleCreateBill = async (order: PurchaseOrder) => {
+    if (order.status?.toLowerCase() === 'billed') {
+      alert('This purchase order is already billed.')
+      return
+    }
+
+    try {
+      setWorkingOrderId(order.id)
+      await axios.post(`/api/purchaseinvoices/from-purchaseorder/${order.id}`)
+      await fetchOrders()
+      alert('Purchase invoice created successfully.')
+    } catch (error) {
+      console.error('Error creating purchase invoice:', error)
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status
+        const payload = error.response?.data as { message?: string; detail?: string; title?: string } | undefined
+        const message = payload?.message || payload?.title || 'Error creating purchase invoice'
+        const detail = payload?.detail
+        alert(`${message}${status ? ` (${status})` : ''}${detail ? `\n${detail}` : ''}`)
+      } else {
+        alert('Error creating purchase invoice')
+      }
+    } finally {
+      setWorkingOrderId(null)
+    }
+  }
+
+  const handleOpenReceive = async (order: PurchaseOrder) => {
+    try {
+      const fullOrder = await getOrder(order.id)
+      setReceiveOrder(fullOrder)
+      setReceiveLines(
+        fullOrder.lines.map(line => ({
+          productId: line.productId,
+          productName: line.product?.name || `Product #${line.productId}`,
+          orderedQty: line.quantity,
+          quantity: line.quantity.toString(),
+          unitCost: line.unitPrice.toString()
+        }))
+      )
+      setReceiveIsFinal(true)
+      setShowReceiveModal(true)
+    } catch (error) {
+      console.error('Error loading order for receipt:', error)
+      alert('Error loading order for receipt')
+    }
+  }
+
+  const updateReceiveLine = (index: number, field: 'quantity' | 'unitCost', value: string) => {
+    const next = [...receiveLines]
+    next[index] = { ...next[index], [field]: value }
+    setReceiveLines(next)
+  }
+
+  const submitReceive = async () => {
+    if (!receiveOrder) return
+
+    const lines = receiveLines
+      .map(line => ({
+        productId: line.productId,
+        quantity: Number(line.quantity),
+        unitCost: Number(line.unitCost),
+        orderedQty: line.orderedQty
+      }))
+      .filter(line => line.quantity > 0)
+
+    if (lines.length === 0) {
+      alert('Enter at least one received line quantity.')
+      return
+    }
+
+    const invalid = lines.find(line => !Number.isFinite(line.unitCost) || line.unitCost <= 0 || line.quantity > line.orderedQty)
+    if (invalid) {
+      alert('Validate quantities and unit costs. Quantity cannot exceed ordered quantity.')
+      return
+    }
+
+    try {
+      setReceiving(true)
+      await axios.post(`/api/purchaseorders/${receiveOrder.id}/receive`, {
+        isFinal: receiveIsFinal,
+        lines: lines.map(l => ({
+          productId: l.productId,
+          quantity: l.quantity,
+          unitCost: l.unitCost
+        }))
+      })
+      setShowReceiveModal(false)
+      setReceiveOrder(null)
+      setReceiveLines([])
+      await fetchOrders()
+      alert('Receipt posted and inventory updated.')
+    } catch (error) {
+      console.error('Error posting receipt:', error)
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status
+        const payload = error.response?.data as { message?: string; detail?: string; title?: string } | undefined
+        const message = payload?.message || payload?.title || 'Error posting receipt'
+        const detail = payload?.detail
+        alert(`${message}${status ? ` (${status})` : ''}${detail ? `\n${detail}` : ''}`)
+      } else {
+        alert('Error posting receipt')
+      }
+    } finally {
+      setReceiving(false)
+    }
   }
 
   return (
@@ -244,8 +409,18 @@ function PurchaseOrders() {
                 </td>
                 <td>${order.total.toFixed(2)}</td>
                 <td>
-                  <button className="btn btn-outline" style={{ marginRight: '8px' }}>View</button>
-                  <button className="btn btn-outline">Edit</button>
+                  <button className="btn btn-outline" style={{ marginRight: '8px' }} onClick={() => handleView(order.id)}>View</button>
+                  <button className="btn btn-outline" style={{ marginRight: '8px' }} onClick={() => handleEditStatus(order)}>Edit</button>
+                  <button className="btn btn-outline" style={{ marginRight: '8px' }} onClick={() => handleOpenReceive(order)}>
+                    Receive
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => handleCreateBill(order)}
+                    disabled={workingOrderId === order.id || order.status?.toLowerCase() === 'billed'}
+                  >
+                    {workingOrderId === order.id ? 'Creating...' : 'Bill'}
+                  </button>
                 </td>
               </tr>
             ))}
@@ -328,6 +503,132 @@ function PurchaseOrders() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showDetailModal && selectedOrder && (
+        <div className="modal-overlay" onClick={() => setShowDetailModal(false)}>
+          <div className="modal" style={{ maxWidth: '900px' }} onClick={e => e.stopPropagation()}>
+            <h3>Purchase Order {selectedOrder.orderNumber}</h3>
+            <div style={{ marginBottom: '16px' }}>
+              <strong>Supplier:</strong> {selectedOrder.supplier?.name || selectedOrder.supplierId}
+              <br />
+              <strong>Date:</strong> {new Date(selectedOrder.orderDate).toLocaleString()}
+              <br />
+              <strong>Status:</strong> {selectedOrder.status}
+            </div>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Quantity</th>
+                  <th>Unit Cost</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedOrder.lines.map((line, idx) => (
+                  <tr key={line.id ?? idx}>
+                    <td>{line.product?.name || line.productId}</td>
+                    <td>{line.quantity}</td>
+                    <td>${line.unitPrice.toFixed(2)}</td>
+                    <td>${line.total.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ textAlign: 'right', marginTop: '10px' }}>
+              <div>Subtotal: ${selectedOrder.subtotal.toFixed(2)}</div>
+              <div>Tax: ${selectedOrder.tax.toFixed(2)}</div>
+              <div style={{ fontWeight: 'bold', fontSize: '18px' }}>Total: ${selectedOrder.total.toFixed(2)}</div>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline" style={{ marginRight: '8px' }} onClick={() => handleOpenReceive(selectedOrder)}>
+                Receive
+              </button>
+              <button type="button" className="btn btn-primary" style={{ marginRight: '8px' }} onClick={() => handleCreateBill(selectedOrder)}>
+                Register Bill
+              </button>
+              <button type="button" className="btn" style={{ background: '#95a5a6', color: 'white' }} onClick={() => setShowDetailModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showReceiveModal && receiveOrder && (
+        <div className="modal-overlay" onClick={() => setShowReceiveModal(false)}>
+          <div className="modal" style={{ maxWidth: '900px' }} onClick={e => e.stopPropagation()}>
+            <h3>Receive Purchase Order {receiveOrder.orderNumber}</h3>
+            <div style={{ marginBottom: '12px' }}>
+              <strong>Supplier:</strong> {receiveOrder.supplier?.name || receiveOrder.supplierId}
+            </div>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Ordered Qty</th>
+                  <th>Receive Qty</th>
+                  <th>Unit Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {receiveLines.map((line, idx) => (
+                  <tr key={`${line.productId}-${idx}`}>
+                    <td>{line.productName}</td>
+                    <td>{line.orderedQty}</td>
+                    <td>
+                      <input
+                        type="number"
+                        min="0"
+                        max={line.orderedQty}
+                        step="0.0001"
+                        className="form-control"
+                        value={line.quantity}
+                        onChange={e => updateReceiveLine(idx, 'quantity', e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="form-control"
+                        value={line.unitCost}
+                        onChange={e => updateReceiveLine(idx, 'unitCost', e.target.value)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="form-group" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                id="receive-final"
+                type="checkbox"
+                checked={receiveIsFinal}
+                onChange={e => setReceiveIsFinal(e.target.checked)}
+              />
+              <label htmlFor="receive-final" style={{ marginBottom: 0 }}>
+                Mark order as fully received
+              </label>
+            </div>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn"
+                style={{ background: '#95a5a6', color: 'white' }}
+                onClick={() => setShowReceiveModal(false)}
+                disabled={receiving}
+              >
+                Cancel
+              </button>
+              <button type="button" className="btn btn-success" onClick={submitReceive} disabled={receiving}>
+                {receiving ? 'Posting...' : 'Post Receipt'}
+              </button>
+            </div>
           </div>
         </div>
       )}
