@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { Plus, SlidersHorizontal } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 interface Customer {
   id: number
@@ -49,6 +50,8 @@ interface SalesOrder {
 }
 
 function SalesOrders() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [orders, setOrders] = useState<SalesOrder[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [products, setProducts] = useState<Product[]>([])
@@ -71,6 +74,16 @@ function SalesOrders() {
     fetchTaxCodes()
     fetchSettings()
   }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('create') === '1') {
+      setShowModal(true)
+      params.delete('create')
+      const next = params.toString()
+      navigate(`${location.pathname}${next ? `?${next}` : ''}`, { replace: true })
+    }
+  }, [location.pathname, location.search, navigate])
 
   const fetchOrders = async () => {
     try {

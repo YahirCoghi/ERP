@@ -54,37 +54,53 @@ public class InvoicesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Invoice>> CreateInvoice(Invoice invoice)
     {
-        invoice.InvoiceNumber = await _codeSequenceService.GenerateNextAsync("invoice", "INV-");
-        invoice.InvoiceDate = DateTime.UtcNow;
-        await ApplyLineTotalsAsync(invoice);
-        invoice.CreatedAt = DateTime.UtcNow;
+        if (invoice.CustomerId <= 0)
+            return BadRequest(new { message = "Customer is required." });
+        if (invoice.Lines == null || invoice.Lines.Count == 0)
+            return BadRequest(new { message = "At least one invoice line is required." });
 
-        _context.Invoices.Add(invoice);
-
-        // Actualizar stock y crear movimiento de inventario
-        foreach (var line in invoice.Lines)
+        try
         {
-            var product = await _context.Products.FindAsync(line.ProductId);
-            if (product != null)
-            {
-                product.Stock -= (int)line.Quantity;
-                
-                _context.InventoryMovements.Add(new Domain.Entities.Inventory.InventoryMovement
-                {
-                    ProductId = line.ProductId,
-                    Type = "OUT",
-                    Quantity = (int)line.Quantity,
-                    UnitCost = product.Cost,
-                    TotalCost = line.Quantity * product.Cost,
-                    Reference = invoice.InvoiceNumber,
-                    ReferenceId = invoice.Id,
-                    Notes = $"Venta - Factura {invoice.InvoiceNumber}"
-                });
-            }
-        }
+            invoice.InvoiceNumber = await _codeSequenceService.GenerateNextAsync("invoice", "INV-");
+            invoice.InvoiceDate = DateTime.UtcNow;
+            await ApplyLineTotalsAsync(invoice);
+            invoice.CreatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetInvoice), new { id = invoice.Id }, invoice);
+            _context.Invoices.Add(invoice);
+
+            // Actualizar stock y crear movimiento de inventario
+            foreach (var line in invoice.Lines)
+            {
+                var product = await _context.Products.FindAsync(line.ProductId);
+                if (product != null)
+                {
+                    if (line.Quantity > product.Stock)
+                        return BadRequest(new { message = $"Insufficient stock for product {product.Name}." });
+
+                    product.Stock -= (int)line.Quantity;
+                    
+                    _context.InventoryMovements.Add(new Domain.Entities.Inventory.InventoryMovement
+                    {
+                        ProductId = line.ProductId,
+                        Type = "OUT",
+                        Quantity = (int)line.Quantity,
+                        UnitCost = product.Cost,
+                        TotalCost = line.Quantity * product.Cost,
+                        Reference = invoice.InvoiceNumber,
+                        ReferenceId = invoice.Id,
+                        Notes = $"Venta - Factura {invoice.InvoiceNumber}"
+                    });
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return CreatedAtAction(nameof(GetInvoice), new { id = invoice.Id }, invoice);
+        }
+        catch (DbUpdateException ex)
+        {
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            return BadRequest(new { message = "Could not save invoice.", detail });
+        }
     }
 
     [HttpPost("from-salesorder/{salesOrderId}")]
@@ -98,56 +114,67 @@ public class InvoicesController : ControllerBase
 
         if (salesOrder == null) return NotFound("Orden de venta no encontrada");
 
-        var settings = await _context.SalesSettings.FirstOrDefaultAsync() ?? new SalesSettings();
-        var invoice = new Invoice
+        try
         {
-            InvoiceNumber = await _codeSequenceService.GenerateNextAsync("invoice", "INV-"),
-            InvoiceDate = DateTime.UtcNow,
-            CustomerId = salesOrder.CustomerId,
-            SalesOrderId = salesOrderId,
-            Status = "Pending",
-            SaleCondition = settings.DefaultSaleCondition,
-            PaymentMethod = settings.DefaultPaymentMethod,
-            DueDate = DateTime.UtcNow.AddDays(settings.DefaultCreditDays),
-            Lines = salesOrder.Lines.Select(l => new InvoiceLine
+            var settings = await _context.SalesSettings.FirstOrDefaultAsync() ?? new SalesSettings();
+            var invoice = new Invoice
             {
-                ProductId = l.ProductId,
-                Quantity = l.Quantity,
-                UnitPrice = l.UnitPrice,
-                Discount = l.Discount,
-                Total = l.Total
-            }).ToList()
-        };
-
-        await ApplyLineTotalsAsync(invoice);
-        _context.Invoices.Add(invoice);
-
-        // Actualizar stock y crear movimientos
-        foreach (var line in invoice.Lines)
-        {
-            var product = await _context.Products.FindAsync(line.ProductId);
-            if (product != null)
-            {
-                product.Stock -= (int)line.Quantity;
-                
-                _context.InventoryMovements.Add(new Domain.Entities.Inventory.InventoryMovement
+                InvoiceNumber = await _codeSequenceService.GenerateNextAsync("invoice", "INV-"),
+                InvoiceDate = DateTime.UtcNow,
+                CustomerId = salesOrder.CustomerId,
+                SalesOrderId = salesOrderId,
+                Status = "Pending",
+                SaleCondition = settings.DefaultSaleCondition,
+                PaymentMethod = settings.DefaultPaymentMethod,
+                DueDate = DateTime.UtcNow.AddDays(settings.DefaultCreditDays),
+                Lines = salesOrder.Lines.Select(l => new InvoiceLine
                 {
-                    ProductId = line.ProductId,
-                    Type = "OUT",
-                    Quantity = (int)line.Quantity,
-                    UnitCost = product.Cost,
-                    TotalCost = line.Quantity * product.Cost,
-                    Reference = invoice.InvoiceNumber,
-                    ReferenceId = invoice.Id,
-                    Notes = $"Venta desde OV {salesOrder.OrderNumber}"
-                });
+                    ProductId = l.ProductId,
+                    Quantity = l.Quantity,
+                    UnitPrice = l.UnitPrice,
+                    Discount = l.Discount,
+                    Total = l.Total
+                }).ToList()
+            };
+
+            await ApplyLineTotalsAsync(invoice);
+            _context.Invoices.Add(invoice);
+
+            // Actualizar stock y crear movimientos
+            foreach (var line in invoice.Lines)
+            {
+                var product = await _context.Products.FindAsync(line.ProductId);
+                if (product != null)
+                {
+                    if (line.Quantity > product.Stock)
+                        return BadRequest(new { message = $"Insufficient stock for product {product.Name}." });
+
+                    product.Stock -= (int)line.Quantity;
+                    
+                    _context.InventoryMovements.Add(new Domain.Entities.Inventory.InventoryMovement
+                    {
+                        ProductId = line.ProductId,
+                        Type = "OUT",
+                        Quantity = (int)line.Quantity,
+                        UnitCost = product.Cost,
+                        TotalCost = line.Quantity * product.Cost,
+                        Reference = invoice.InvoiceNumber,
+                        ReferenceId = invoice.Id,
+                        Notes = $"Venta desde OV {salesOrder.OrderNumber}"
+                    });
+                }
             }
+
+            salesOrder.Status = "Invoiced";
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetInvoice), new { id = invoice.Id }, invoice);
         }
-
-        salesOrder.Status = "Invoiced";
-        await _context.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetInvoice), new { id = invoice.Id }, invoice);
+        catch (DbUpdateException ex)
+        {
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            return BadRequest(new { message = "Could not create invoice from sales order.", detail });
+        }
     }
 
     [HttpPut("{id}/status")]
