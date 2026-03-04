@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MiniERP.API.Security;
+using MiniERP.Application.Contracts;
 using MiniERP.Domain.Entities.Sales;
 using MiniERP.Infrastructure.Data;
 
@@ -17,10 +18,12 @@ namespace MiniERP.API.Controllers;
 public class InvoicesController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly ICodeSequenceService _codeSequenceService;
 
-    public InvoicesController(ApplicationDbContext context)
+    public InvoicesController(ApplicationDbContext context, ICodeSequenceService codeSequenceService)
     {
         _context = context;
+        _codeSequenceService = codeSequenceService;
     }
 
     [HttpGet]
@@ -51,7 +54,7 @@ public class InvoicesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Invoice>> CreateInvoice(Invoice invoice)
     {
-        invoice.InvoiceNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}-{new Random().Next(1000, 9999)}";
+        invoice.InvoiceNumber = await _codeSequenceService.GenerateNextAsync("invoice", "INV-");
         invoice.InvoiceDate = DateTime.UtcNow;
         await ApplyLineTotalsAsync(invoice);
         invoice.CreatedAt = DateTime.UtcNow;
@@ -98,7 +101,7 @@ public class InvoicesController : ControllerBase
         var settings = await _context.SalesSettings.FirstOrDefaultAsync() ?? new SalesSettings();
         var invoice = new Invoice
         {
-            InvoiceNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}-{new Random().Next(1000, 9999)}",
+            InvoiceNumber = await _codeSequenceService.GenerateNextAsync("invoice", "INV-"),
             InvoiceDate = DateTime.UtcNow,
             CustomerId = salesOrder.CustomerId,
             SalesOrderId = salesOrderId,
@@ -179,7 +182,7 @@ public class InvoicesController : ControllerBase
 
         var creditNote = new Invoice
         {
-            InvoiceNumber = $"NC-{DateTime.UtcNow:yyyyMMdd}-{new Random().Next(1000, 9999)}",
+            InvoiceNumber = await _codeSequenceService.GenerateNextAsync("credit-note", "NC-"),
             InvoiceDate = DateTime.UtcNow,
             CustomerId = original.CustomerId,
             Subtotal = 0,

@@ -34,6 +34,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ElectronicInvoice> ElectronicInvoices => Set<ElectronicInvoice>();
     public DbSet<CompanyProfile> CompanyProfiles => Set<CompanyProfile>();
     public DbSet<TaxCode> TaxCodes => Set<TaxCode>();
+    public DbSet<EntitySequence> EntitySequences => Set<EntitySequence>();
     public DbSet<SaleCondition> SaleConditions => Set<SaleCondition>();
     public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
     public DbSet<PaymentTerm> PaymentTerms => Set<PaymentTerm>();
@@ -52,6 +53,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
             entity.Property(e => e.Cost).HasColumnType("decimal(18,2)");
             entity.Property(e => e.TaxRate).HasColumnType("decimal(5,2)");
+            entity.HasIndex(e => e.Code).IsUnique();
         });
 
         modelBuilder.Entity<Customer>(entity =>
@@ -61,6 +63,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.IdentificationNumber).HasMaxLength(20);
             entity.Property(e => e.EconomicActivityCode).HasMaxLength(20);
+            entity.HasIndex(e => e.Code).IsUnique();
         });
 
         modelBuilder.Entity<Supplier>(entity =>
@@ -70,6 +73,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.IdentificationNumber).HasMaxLength(20);
             entity.Property(e => e.EconomicActivityCode).HasMaxLength(20);
+            entity.HasIndex(e => e.Code).IsUnique();
         });
 
         modelBuilder.Entity<User>(entity =>
@@ -112,6 +116,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Tax).HasColumnType("decimal(18,2)");
             entity.Property(e => e.Total).HasColumnType("decimal(18,2)");
             entity.HasOne(e => e.Customer).WithMany().HasForeignKey(e => e.CustomerId);
+            entity.HasIndex(e => e.OrderNumber).IsUnique();
         });
 
         modelBuilder.Entity<SalesOrderLine>(entity =>
@@ -141,6 +146,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Tax).HasColumnType("decimal(18,2)");
             entity.Property(e => e.Total).HasColumnType("decimal(18,2)");
             entity.Property(e => e.ExchangeRate).HasColumnType("decimal(18,6)");
+            entity.HasIndex(e => e.InvoiceNumber).IsUnique();
         });
 
         modelBuilder.Entity<InvoiceLine>(entity =>
@@ -164,6 +170,16 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Tax).HasColumnType("decimal(18,2)");
             entity.Property(e => e.Total).HasColumnType("decimal(18,2)");
             entity.HasOne(e => e.Supplier).WithMany().HasForeignKey(e => e.SupplierId);
+            entity.HasIndex(e => e.OrderNumber).IsUnique();
+        });
+
+        modelBuilder.Entity<EntitySequence>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.EntityName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Prefix).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Padding).HasDefaultValue(6);
+            entity.HasIndex(e => e.EntityName).IsUnique();
         });
 
         modelBuilder.Entity<PurchaseOrderLine>(entity =>

@@ -55,7 +55,6 @@ function PurchaseOrders() {
   const [settings, setSettings] = useState<PurchasingSettings>({ defaultTaxRate: 13 })
   const [showModal, setShowModal] = useState(false)
   const [formData, setFormData] = useState({
-    orderNumber: '',
     supplierId: '',
     taxCode: '',
     lines: [] as { productId: string; quantity: string; unitCost: string }[]
@@ -168,7 +167,6 @@ function PurchaseOrders() {
       const { subtotal, tax, total } = calculateTotals()
 
       const data = {
-        orderNumber: formData.orderNumber,
         supplierId: parseInt(formData.supplierId),
         subtotal,
         tax,
@@ -184,7 +182,7 @@ function PurchaseOrders() {
       await axios.post('/api/purchaseorders', data)
 
       setShowModal(false)
-      setFormData({ orderNumber: '', supplierId: '', taxCode: '', lines: [] })
+      setFormData({ supplierId: '', taxCode: '', lines: [] })
       fetchOrders()
     } catch (error) {
       console.error('Error saving order:', error)
@@ -262,7 +260,7 @@ function PurchaseOrders() {
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Order Number</label>
-                <input type="text" className="form-control" value={formData.orderNumber} onChange={e => setFormData({ ...formData, orderNumber: e.target.value })} required />
+                <input type="text" className="form-control" value="Auto-generated" readOnly />
               </div>
 
               <div className="form-group">

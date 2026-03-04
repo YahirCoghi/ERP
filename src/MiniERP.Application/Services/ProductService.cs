@@ -10,17 +10,19 @@ namespace MiniERP.Application.Services;
 public class ProductService : IProductService
 {
     private readonly IProductRepository _repo;
+    private readonly ICodeSequenceService _codeSequenceService;
 
-    public ProductService(IProductRepository repo)
+    public ProductService(IProductRepository repo, ICodeSequenceService codeSequenceService)
     {
         _repo = repo;
+        _codeSequenceService = codeSequenceService;
     }
 
     public async Task<ProductDto> CreateAsync(ProductCreateDto dto)
     {
         var product = new Product
         {
-            Code = dto.Code ?? string.Empty,
+            Code = string.Empty,
             Name = dto.Name,
             Description = dto.Description,
             Price = dto.Price,
@@ -32,11 +34,7 @@ public class ProductService : IProductService
             CreatedAt = System.DateTime.UtcNow
         };
 
-        if (string.IsNullOrWhiteSpace(product.Code))
-        {
-            var count = await _repo.CountAsync();
-            product.Code = $"PRD-{(count + 1):D5}";
-        }
+        product.Code = await _codeSequenceService.GenerateNextAsync("product", "PROD-");
 
         await _repo.AddAsync(product);
 

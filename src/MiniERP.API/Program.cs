@@ -90,6 +90,7 @@ builder.Services.AddScoped<MiniERP.Application.Contracts.IProductTransactionRepo
 builder.Services.AddScoped<MiniERP.Application.Services.IProductTransactionService, MiniERP.Application.Services.ProductTransactionService>();
 builder.Services.AddScoped<IAccountingService, AccountingService>();
 builder.Services.AddScoped<IElectronicInvoiceService, ElectronicInvoiceService>();
+builder.Services.AddScoped<ICodeSequenceService, CodeSequenceService>();
 builder.Services.AddScoped<IElectronicInvoiceSigner, ElectronicInvoiceSignerStub>();
 builder.Services.AddHttpClient<IHaciendaClient, HaciendaClient>();
 builder.Services.AddSingleton<ElectronicInvoiceXmlBuilder>();

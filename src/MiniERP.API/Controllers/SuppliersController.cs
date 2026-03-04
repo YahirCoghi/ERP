@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MiniERP.API.Security;
+using MiniERP.Application.Contracts;
 using MiniERP.Domain.Entities.Purchasing;
 using MiniERP.Infrastructure.Data;
 
@@ -17,10 +18,12 @@ namespace MiniERP.API.Controllers;
 public class SuppliersController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly ICodeSequenceService _codeSequenceService;
 
-    public SuppliersController(ApplicationDbContext context)
+    public SuppliersController(ApplicationDbContext context, ICodeSequenceService codeSequenceService)
     {
         _context = context;
+        _codeSequenceService = codeSequenceService;
     }
 
     [HttpGet]
@@ -40,6 +43,7 @@ public class SuppliersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Supplier>> CreateSupplier(Supplier supplier)
     {
+        supplier.Code = await _codeSequenceService.GenerateNextAsync("supplier", "SUP-");
         supplier.CreatedAt = DateTime.UtcNow;
         _context.Suppliers.Add(supplier);
         await _context.SaveChangesAsync();
@@ -50,8 +54,18 @@ public class SuppliersController : ControllerBase
     public async Task<IActionResult> UpdateSupplier(int id, Supplier supplier)
     {
         if (id != supplier.Id) return BadRequest();
-        supplier.UpdatedAt = DateTime.UtcNow;
-        _context.Entry(supplier).State = EntityState.Modified;
+        var existing = await _context.Suppliers.FindAsync(id);
+        if (existing == null) return NotFound();
+
+        existing.Name = supplier.Name;
+        existing.Email = supplier.Email;
+        existing.Phone = supplier.Phone;
+        existing.Address = supplier.Address;
+        existing.TaxId = supplier.TaxId;
+        existing.IdentificationType = supplier.IdentificationType;
+        existing.IdentificationNumber = supplier.IdentificationNumber;
+        existing.EconomicActivityCode = supplier.EconomicActivityCode;
+        existing.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         return NoContent();
     }

@@ -56,7 +56,6 @@ function SalesOrders() {
   const [settings, setSettings] = useState<SalesSettings>({ defaultTaxRate: 13 })
   const [showModal, setShowModal] = useState(false)
   const [formData, setFormData] = useState({
-    orderNumber: '',
     customerId: '',
     taxCode: '',
     lines: [] as { productId: string; quantity: string; unitPrice: string; discount: string }[]
@@ -170,7 +169,6 @@ function SalesOrders() {
       const { subtotal, tax, total } = calculateTotals()
 
       const data = {
-        orderNumber: formData.orderNumber,
         customerId: parseInt(formData.customerId),
         subtotal,
         tax,
@@ -187,11 +185,19 @@ function SalesOrders() {
       await axios.post('/api/salesorders', data)
 
       setShowModal(false)
-      setFormData({ orderNumber: '', customerId: '', taxCode: '', lines: [] })
+      setFormData({ customerId: '', taxCode: '', lines: [] })
       fetchOrders()
     } catch (error) {
       console.error('Error saving order:', error)
-      alert('Error saving the order')
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status
+        const payload = error.response?.data as { message?: string; detail?: string; title?: string; errors?: Record<string, string[]> } | undefined
+        const message = payload?.message || payload?.title || 'Error saving the order'
+        const detail = payload?.detail
+        alert(`${message}${status ? ` (${status})` : ''}${detail ? `\n${detail}` : ''}`)
+      } else {
+        alert('Error saving the order')
+      }
     }
   }
 
@@ -265,7 +271,7 @@ function SalesOrders() {
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Order Number</label>
-                <input type="text" className="form-control" value={formData.orderNumber} onChange={e => setFormData({ ...formData, orderNumber: e.target.value })} required />
+                <input type="text" className="form-control" value="Auto-generated" readOnly />
               </div>
 
               <div className="form-group">

@@ -151,10 +151,9 @@ function Products() {
                 <input
                   type="text"
                   className="form-control"
-                  value={formData.code}
-                  onChange={e => setFormData({...formData, code: e.target.value})}
-                  readOnly={!editingProduct}
-                  placeholder={editingProduct ? '' : 'Se generará automáticamente'}
+                  value={editingProduct ? formData.code : 'Auto-generated'}
+                  readOnly
+                  placeholder={editingProduct ? '' : 'Auto-generated'}
                   required={false}
                 />
               </div>

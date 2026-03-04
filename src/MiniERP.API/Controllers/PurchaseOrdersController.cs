@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MiniERP.API.Security;
+using MiniERP.Application.Contracts;
 using MiniERP.Domain.Entities.Purchasing;
 using MiniERP.Infrastructure.Data;
 
@@ -17,10 +18,12 @@ namespace MiniERP.API.Controllers;
 public class PurchaseOrdersController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly ICodeSequenceService _codeSequenceService;
 
-    public PurchaseOrdersController(ApplicationDbContext context)
+    public PurchaseOrdersController(ApplicationDbContext context, ICodeSequenceService codeSequenceService)
     {
         _context = context;
+        _codeSequenceService = codeSequenceService;
     }
 
     [HttpGet]
@@ -50,7 +53,7 @@ public class PurchaseOrdersController : ControllerBase
     public async Task<ActionResult<PurchaseOrder>> CreatePurchaseOrder(PurchaseOrder purchaseOrder)
     {
         var settings = await _context.PurchasingSettings.FirstOrDefaultAsync() ?? new PurchasingSettings();
-        purchaseOrder.OrderNumber = $"PO-{DateTime.UtcNow:yyyyMMdd}-{new Random().Next(1000, 9999)}";
+        purchaseOrder.OrderNumber = await _codeSequenceService.GenerateNextAsync("purchase-order", "PO-");
         purchaseOrder.CreatedAt = DateTime.UtcNow;
         purchaseOrder.Currency = purchaseOrder.Currency == 0 ? settings.DefaultCurrency : purchaseOrder.Currency;
         purchaseOrder.Status = string.IsNullOrWhiteSpace(purchaseOrder.Status) ? "Pending" : purchaseOrder.Status;

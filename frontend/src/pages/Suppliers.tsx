@@ -17,7 +17,6 @@ function Suppliers() {
   const [showModal, setShowModal] = useState(false)
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
   const [formData, setFormData] = useState({
-    code: '',
     name: '',
     email: '',
     phone: '',
@@ -42,14 +41,14 @@ function Suppliers() {
     e.preventDefault()
     try {
       if (editingSupplier) {
-        await axios.put(`/api/suppliers/${editingSupplier.id}`, { ...formData, id: editingSupplier.id })
+        await axios.put(`/api/suppliers/${editingSupplier.id}`, { ...formData, id: editingSupplier.id, code: editingSupplier.code })
       } else {
         await axios.post('/api/suppliers', formData)
       }
 
       setShowModal(false)
       setEditingSupplier(null)
-      setFormData({ code: '', name: '', email: '', phone: '', address: '', taxId: '' })
+      setFormData({ name: '', email: '', phone: '', address: '', taxId: '' })
       fetchSuppliers()
     } catch (error) {
       console.error('Error saving supplier:', error)
@@ -60,7 +59,6 @@ function Suppliers() {
   const handleEdit = (supplier: Supplier) => {
     setEditingSupplier(supplier)
     setFormData({
-      code: supplier.code,
       name: supplier.name,
       email: supplier.email || '',
       phone: supplier.phone || '',
@@ -137,7 +135,12 @@ function Suppliers() {
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Supplier Code</label>
-                <input type="text" className="form-control" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} required />
+                <input
+                  type="text"
+                  className="form-control"
+                  value={editingSupplier?.code ?? 'Auto-generated'}
+                  readOnly
+                />
               </div>
               <div className="form-group">
                 <label>Company Name</label>

@@ -17,7 +17,6 @@ function Customers() {
   const [showModal, setShowModal] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [formData, setFormData] = useState({
-    code: '',
     name: '',
     email: '',
     phone: '',
@@ -42,25 +41,32 @@ function Customers() {
     e.preventDefault()
     try {
       if (editingCustomer) {
-        await axios.put(`/api/customers/${editingCustomer.id}`, { ...formData, id: editingCustomer.id })
+        await axios.put(`/api/customers/${editingCustomer.id}`, { ...formData, id: editingCustomer.id, code: editingCustomer.code })
       } else {
         await axios.post('/api/customers', formData)
       }
 
       setShowModal(false)
       setEditingCustomer(null)
-      setFormData({ code: '', name: '', email: '', phone: '', address: '', taxId: '' })
+      setFormData({ name: '', email: '', phone: '', address: '', taxId: '' })
       fetchCustomers()
     } catch (error) {
       console.error('Error saving customer:', error)
-      alert('Error saving customer')
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status
+        const payload = error.response?.data as { message?: string; detail?: string; title?: string; errors?: Record<string, string[]> } | undefined
+        const message = payload?.message || payload?.title || 'Error saving customer'
+        const detail = payload?.detail
+        alert(`${message}${status ? ` (${status})` : ''}${detail ? `\n${detail}` : ''}`)
+      } else {
+        alert('Error saving customer')
+      }
     }
   }
 
   const handleEdit = (customer: Customer) => {
     setEditingCustomer(customer)
     setFormData({
-      code: customer.code,
       name: customer.name,
       email: customer.email || '',
       phone: customer.phone || '',
@@ -137,7 +143,12 @@ function Customers() {
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Customer Code</label>
-                <input type="text" className="form-control" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} required />
+                <input
+                  type="text"
+                  className="form-control"
+                  value={editingCustomer?.code ?? 'Auto-generated'}
+                  readOnly
+                />
               </div>
               <div className="form-group">
                 <label>Company Name</label>
