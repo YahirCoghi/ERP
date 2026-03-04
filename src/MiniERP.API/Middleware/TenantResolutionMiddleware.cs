@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -5,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using MiniERP.Application.Contracts;
+using MiniERP.Domain.Entities.MultiTenancy;
 using MiniERP.Infrastructure.Data;
 
 namespace MiniERP.API.Middleware;
@@ -21,7 +23,7 @@ public class TenantResolutionMiddleware
     public async Task InvokeAsync(HttpContext context, MasterDbContext masterDb, ITenantAccessor accessor, Microsoft.Extensions.Configuration.IConfiguration configuration, IHostEnvironment env)
     {
         var path = context.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
-        if (path.StartsWith("/api/tenants") || path.StartsWith("/api/signup"))
+        if (path.StartsWith("/api/tenants") || path.StartsWith("/api/signup") || path.StartsWith("/health"))
         {
             await _next(context);
             return;
@@ -57,11 +59,46 @@ public class TenantResolutionMiddleware
             return;
         }
 
-        if (tenant.Status is MiniERP.Domain.Entities.MultiTenancy.SubscriptionStatus.Suspended
-            or MiniERP.Domain.Entities.MultiTenancy.SubscriptionStatus.Canceled
-            or MiniERP.Domain.Entities.MultiTenancy.SubscriptionStatus.PastDue)
+        var now = DateTime.UtcNow;
+        var effectiveStatus = tenant.Status;
+
+        if (tenant.Status == SubscriptionStatus.Trial &&
+            tenant.TrialEndsAt.HasValue &&
+            tenant.TrialEndsAt.Value < now)
         {
-            await WriteProblemAsync(context, StatusCodes.Status402PaymentRequired, "Tenant subscription inactive.");
+            effectiveStatus = SubscriptionStatus.PastDue;
+        }
+
+        if (tenant.Status == SubscriptionStatus.Active &&
+            tenant.PaidUntil.HasValue &&
+            tenant.PaidUntil.Value < now)
+        {
+            effectiveStatus = SubscriptionStatus.PastDue;
+        }
+
+        if (effectiveStatus != tenant.Status)
+        {
+            tenant.Status = effectiveStatus;
+            tenant.UpdatedAt = now;
+
+            var license = await masterDb.Licenses.FirstOrDefaultAsync(l => l.TenantId == tenant.Id);
+            if (license != null)
+            {
+                license.Status = effectiveStatus;
+                license.UpdatedAt = now;
+            }
+
+            await masterDb.SaveChangesAsync();
+        }
+
+        if (effectiveStatus is SubscriptionStatus.Suspended
+            or SubscriptionStatus.Canceled
+            or SubscriptionStatus.PastDue)
+        {
+            await WriteProblemAsync(
+                context,
+                StatusCodes.Status402PaymentRequired,
+                $"Tenant subscription inactive ({effectiveStatus}).");
             return;
         }
 

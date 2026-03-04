@@ -5,6 +5,10 @@ interface Tenant {
   id: number
   name: string
   status: string
+  planCode?: string
+  paidUntil?: string
+  trialEndsAt?: string
+  maxUsers: number
 }
 
 function TenantSelector() {
@@ -40,6 +44,10 @@ function TenantSelector() {
               <th>ID</th>
               <th>Nombre</th>
               <th>Estado</th>
+              <th>Plan</th>
+              <th>Pago hasta</th>
+              <th>Trial hasta</th>
+              <th>Max Users</th>
               <th></th>
             </tr>
           </thead>
@@ -49,6 +57,10 @@ function TenantSelector() {
                 <td>{t.id}</td>
                 <td>{t.name}</td>
                 <td>{t.status}</td>
+                <td>{t.planCode || '-'}</td>
+                <td>{t.paidUntil ? new Date(t.paidUntil).toLocaleDateString() : '-'}</td>
+                <td>{t.trialEndsAt ? new Date(t.trialEndsAt).toLocaleDateString() : '-'}</td>
+                <td>{t.maxUsers}</td>
                 <td>
                   <button className="btn btn-primary" onClick={() => handleSelect(t.id)}>
                     Usar
@@ -58,7 +70,7 @@ function TenantSelector() {
             ))}
             {tenants.length === 0 && (
               <tr>
-                <td colSpan={4}>No hay tenants</td>
+                <td colSpan={8}>No hay tenants</td>
               </tr>
             )}
           </tbody>

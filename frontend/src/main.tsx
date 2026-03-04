@@ -42,6 +42,13 @@ axios.interceptors.response.use(
       localStorage.removeItem('username')
       localStorage.removeItem('role')
     }
+    if (error?.response?.status === 402) {
+      const message =
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        'Suscripción inactiva. Contacta soporte o renueva tu plan.'
+      alert(message)
+    }
     return Promise.reject(error)
   }
 )

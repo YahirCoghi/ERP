@@ -182,6 +182,12 @@ function Layout({ children, onLogout, username, role }: LayoutProps) {
             </NavLink>
           )}
           {hasAnyRole('Owner', 'Admin') && (
+            <NavLink to="/subscription">
+              <span className="nav-icon"><ShieldCheck size={18} /></span>
+              Subscription
+            </NavLink>
+          )}
+          {hasAnyRole('Owner', 'Admin') && (
             <NavLink to="/signup">
               <span className="nav-icon"><CircleUser size={18} /></span>
               Signup

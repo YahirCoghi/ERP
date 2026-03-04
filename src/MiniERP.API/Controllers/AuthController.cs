@@ -5,10 +5,12 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using MiniERP.Application.Contracts;
 using MiniERP.Domain.Entities.Auth;
 using MiniERP.Infrastructure.Data;
 
@@ -24,11 +26,19 @@ public record AuthResponse(string Token, string Username, string Role);
 public class AuthController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly MasterDbContext _masterDb;
+    private readonly ITenantAccessor _tenantAccessor;
     private readonly IConfiguration _configuration;
 
-    public AuthController(ApplicationDbContext context, IConfiguration configuration)
+    public AuthController(
+        ApplicationDbContext context,
+        MasterDbContext masterDb,
+        ITenantAccessor tenantAccessor,
+        IConfiguration configuration)
     {
         _context = context;
+        _masterDb = masterDb;
+        _tenantAccessor = tenantAccessor;
         _configuration = configuration;
     }
 
@@ -53,6 +63,28 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
     {
+        if (_tenantAccessor.TenantId <= 0)
+        {
+            return BadRequest(new { message = "Tenant context is required." });
+        }
+
+        var tenant = await _masterDb.Tenants
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == _tenantAccessor.TenantId && t.IsActive);
+        if (tenant == null)
+        {
+            return NotFound(new { message = "Tenant not found." });
+        }
+
+        var activeUsers = await _context.Users.CountAsync(u => u.IsActive);
+        if (activeUsers >= tenant.MaxUsers)
+        {
+            return StatusCode(StatusCodes.Status402PaymentRequired, new
+            {
+                message = $"User limit reached for current plan ({tenant.MaxUsers})."
+            });
+        }
+
         if (await _context.Users.AnyAsync(u => u.Username == request.Username))
         {
             return BadRequest(new { message = "El usuario ya existe" });

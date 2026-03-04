@@ -19,6 +19,7 @@ import PaymentTerms from './pages/PaymentTerms'
 import Signup from './pages/Signup'
 import TenantSelector from './pages/TenantSelector'
 import UsersManagement from './pages/UsersManagement'
+import SubscriptionStatus from './pages/SubscriptionStatus'
 
 const hasAnyRole = (role: string, roles: string[]) => roles.includes(role)
 
@@ -100,6 +101,7 @@ function App() {
         <Route path="/catalogs/payment-terms" element={hasAnyRole(role, ['Owner', 'Admin', 'Accounting', 'Sales', 'Purchasing']) ? <PaymentTerms /> : <Navigate to="/" replace />} />
         <Route path="/signup" element={hasAnyRole(role, ['Owner', 'Admin']) ? <Signup /> : <Navigate to="/" replace />} />
         <Route path="/tenants" element={hasAnyRole(role, ['Owner', 'Admin']) ? <TenantSelector /> : <Navigate to="/" replace />} />
+        <Route path="/subscription" element={hasAnyRole(role, ['Owner', 'Admin']) ? <SubscriptionStatus /> : <Navigate to="/" replace />} />
         <Route path="/users" element={hasAnyRole(role, ['Owner', 'Admin']) ? <UsersManagement /> : <Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
