@@ -223,3 +223,47 @@ El siguiente salto de valor está en:
 - Formalizar operación SaaS (onboarding, billing, soporte, monitoreo).
 - Estandarizar producto para escalar comercialmente con seguridad.
 
+
+---
+
+## 14) Modulos avanzados incorporados (fase de cierre)
+Se agregaron funcionalidades adicionales para cubrir el bloque pendiente de administracion avanzada, finanzas especializadas, CRM avanzado, operaciones de produccion, servicio y herramientas generales.
+
+### 14.1 Administracion avanzada
+- Plantillas de aprobacion por modulo con etapas (`ApprovalTemplate`, `ApprovalTemplateStage`) y reporte de aprobaciones.
+- Gestor de add-ons con definiciones y activaciones por tenant (`AddonDefinition`, `AddonActivation`).
+- Configuracion de servicio/licencia movil (`MobileServiceConfig`).
+- Workflow Manager con definiciones, pasos e instancias (`WorkflowDefinition`, `WorkflowStep`, `WorkflowInstance`).
+- Gestion de licencias operativas por tenant/usuario (`TenantLicenseAssignment`).
+
+### 14.2 Finanzas especializadas
+- Edicion de montos 1099 por proveedor y periodo (`Vendor1099Amount`).
+- Activos fijos y depreciacion mensual (`FixedAsset`, `FixedAssetDepreciation`).
+- Intrastat con declaracion, lineas y exportacion CSV (`IntrastatDeclaration`, `IntrastatDeclarationLine`).
+
+### 14.3 CRM avanzado
+- Campanas con wizard de segmentacion, programacion y ejecucion (`Campaign`, `CampaignRecipient`).
+
+### 14.4 Produccion y logistica avanzada
+- Wizard de confirmacion de aprovisionamiento (`ProcurementConfirmation`, `ProcurementConfirmationLine`).
+- Pick Pack & Production tracking (`PickPackTask`, `PickPackTaskLine`).
+
+### 14.5 Servicio
+- Base de conocimiento para incidencias (`KnowledgeBaseArticle`).
+- Metricas de SLA y reporte agregado de servicio (`ServiceSlaMetric`).
+
+### 14.6 Herramientas generales
+- Query Manager persistente (`QueryDefinition`).
+- Plantillas de impresion (`PrintLayoutTemplate`).
+- Campos y objetos definidos por usuario (`UserDefinedField`, `UserDefinedObject`).
+
+### 14.7 Licenciamiento por modulo
+El sistema de planes se amplio para incluir nuevos modulos:
+- `Addons`, `Mobile`, `WorkflowManager`, `LicenseManagement`
+- `FixedAssets`, `Intrastat`, `Forms1099`
+- `Campaigns`
+- `ProcurementWizard`, `PickPack`
+- `KnowledgeBase`, `ServiceReports`
+- `PrintLayouts`, `UserDefinedObjects`
+
+Estos modulos se exponen via politicas dinamicas (`Modulo:Read|Full`) y el frontend respeta la visibilidad por plan/rol.
