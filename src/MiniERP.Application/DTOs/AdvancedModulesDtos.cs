@@ -1,0 +1,30 @@
+using System;
+
+namespace MiniERP.Application.DTOs;
+
+public record ApprovalTemplateDto(int Id, string Code, string Name, string Module, string? Description);
+public record ApprovalTemplateStageDto(int Id, int TemplateId, int StageOrder, string Name, string RoleRequired, decimal? MinAmount);
+public record AddonDefinitionDto(int Id, string Code, string Name, string Version, string? ConfigurationSchemaJson);
+public record AddonActivationDto(int Id, int AddonDefinitionId, bool Enabled, string? ConfigurationJson, DateTime? EnabledAt);
+public record MobileServiceConfigDto(int Id, string Provider, int MaxDevices, bool Enabled, DateTime? LicenseExpiresAt);
+public record WorkflowDefinitionDto(int Id, string Code, string Name, string Module, bool IsPublished);
+public record WorkflowStepDto(int Id, int WorkflowDefinitionId, int StepOrder, string Name, string ActionType, string? ConditionsJson);
+public record WorkflowInstanceDto(int Id, int WorkflowDefinitionId, string ReferenceType, int ReferenceId, string Status, DateTime StartedAt, DateTime? CompletedAt);
+public record TenantLicenseAssignmentDto(int Id, string LicenseCode, string Scope, int? UserId, bool Enabled, DateTime? ExpiresAt);
+public record Vendor1099AmountDto(int Id, int SupplierId, int Year, decimal NonEmployeeCompensation, decimal FederalTaxWithheld, string? Notes);
+public record FixedAssetDto(int Id, string AssetCode, string Name, DateTime AcquisitionDate, decimal AcquisitionCost, decimal ResidualValue, int UsefulLifeMonths, string Status);
+public record FixedAssetDepreciationDto(int Id, int FixedAssetId, DateTime PeriodDate, decimal Amount);
+public record IntrastatDeclarationDto(int Id, string DeclarationNumber, int Year, int Month, string Status);
+public record IntrastatDeclarationLineDto(int Id, int IntrastatDeclarationId, string CommodityCode, string CountryCode, decimal NetMassKg, decimal ValueAmount);
+public record CampaignDto(int Id, string Name, string SegmentCriteriaJson, DateTime? ScheduledAt, string Status);
+public record CampaignRecipientDto(int Id, int CampaignId, int CustomerId, string Channel, bool Delivered, bool Opened, bool Converted);
+public record ProcurementConfirmationDto(int Id, string ReferenceType, int ReferenceId, string Status, bool IsPartial, string? Notes);
+public record ProcurementConfirmationLineDto(int Id, int ProcurementConfirmationId, int ProductId, decimal RequestedQty, decimal ConfirmedQty);
+public record PickPackTaskDto(int Id, string TaskNumber, string TaskType, string Status, string? Warehouse);
+public record PickPackTaskLineDto(int Id, int PickPackTaskId, int ProductId, decimal Quantity, decimal ConfirmedQuantity);
+public record KnowledgeBaseArticleDto(int Id, string Title, string Category, string Content, string? Tags);
+public record ServiceSlaMetricDto(int Id, DateTime MetricDate, int TicketsOpened, int TicketsResolved, decimal AvgResolutionHours, decimal SlaCompliancePct);
+public record QueryDefinitionDto(int Id, string Name, string SqlText, string Module);
+public record PrintLayoutTemplateDto(int Id, string Name, string DocumentType, string LayoutJson);
+public record UserDefinedFieldDto(int Id, string TargetEntity, string FieldName, string DataType, bool Required);
+public record UserDefinedObjectDto(int Id, string ObjectName, string SchemaJson);

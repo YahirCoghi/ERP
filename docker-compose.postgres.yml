@@ -1,0 +1,37 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: MiniERP
+    ports:
+      - '5432:5432'
+    volumes:
+      - db-data-postgres:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      - DatabaseProvider=Postgres
+      - ConnectionStrings__Postgres=Host=db;Port=5432;Database=MiniERP;Username=postgres;Password=postgres
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      - db
+    ports:
+      - '5000:5000'
+
+  web:
+    build:
+      context: .
+      dockerfile: src/MiniERP.Web/Dockerfile
+    ports:
+      - '3000:80'
+    depends_on:
+      - api
+
+volumes:
+  db-data-postgres:
